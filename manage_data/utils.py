@@ -70,25 +70,3 @@ class Logger(object):
         self.console.close()
         if self.file is not None:
             self.file.close()
-
-def intersec(first, second):
-    overlap = False
-    overlap = overlap or (first[0] <= second[0] and second[0] <= first[2] and first[1] <= second[1] and second[1] <= first[3])
-    overlap = overlap or (first[0] <= second[2] and second[2] <= first[2] and first[1] <= second[1] and second[1] <= first[3])
-    overlap = overlap or (first[0] <= second[0] and second[0] <= first[2] and first[1] <= second[3] and second[3] <= first[3])
-    overlap = overlap or (first[0] <= second[2] and second[2] <= first[2] and first[1] <= second[3] and second[3] <= first[3])
-    return overlap
-
-def cnt_overlaps(boxes):
-    boxes_overlap = []
-    id_overlap = []
-    for ind_first, first in enumerate(boxes):
-        cnt = 0
-        overlap = []
-        for ind_second, second in enumerate(boxes):
-            if ind_first != ind_second and intersec(first, second):
-                cnt += 1
-                overlap.append(ind_second)
-        boxes_overlap.append(cnt)
-        id_overlap.append(overlap)
-    return boxes_overlap, id_overlap

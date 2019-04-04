@@ -3,120 +3,30 @@ import architecture.network as network
 import numpy as np
 import torch
 
-EPSILON = 1e-20
-
-def evaluate_model(trained_model, data_loader, loss_quad = 'all', model = 'MCNN', loss = 'MSE', quad_level_stats = False, epoch = 0, fusion_layer = 1, fusion_steps = 3):
-    net = CrowdCounter(model = model, loss = loss, loss_quad = loss_quad, fusion_layer = fusion_layer, fusion_steps = fusion_steps)
+def evaluate_model(trained_model, data_loader, save_test_results = False, plot_save_dir = "/tmp/"):
+    net = CrowdCounter()
     network.load_net(trained_model, net)
     net.cuda()
     net.eval()
     mae = 0.0
     mse = 0.0
 
-    if quad_level_stats and (model.startswith('QUAD')):
-        quad_level_upsamples_mse = np.zeros(net.DME.levels)
-        quad_level_upsamples_mae = np.zeros(net.DME.levels)
-        quad_level_reconstructions_mse = np.zeros(net.DME.levels)
-        quad_level_reconstructions_mae = np.zeros(net.DME.levels)
-
     for blob in data_loader:                        
         im_data = blob['data']
         gt_data = blob['gt_density']
-        if loss == 'MSE':
-            pass
-        elif loss == 'KL-divergence':
-            gt_data = np.log(gt_data)
-        else:
-            raise Exception("invalid loss function")
-        im_data_norm = im_data
-        density_map = net(im_data_norm, gt_data, epoch = epoch)
+        idx_data = blob['idx']
+        im_data_norm = im_data / 255.0
+        density_map = net(im_data_norm, gt_data)
         density_map = density_map.data.cpu().numpy()
-        if loss == 'MSE':
-            gt_count = np.sum(gt_data)
-            et_count = np.sum(density_map)
-        elif loss == 'KL-divergence':
-            gt_count = np.sum(np.exp(gt_data))
-            et_count = np.sum(np.exp(density_map))
-        else:
-            raise Exception("invalid loss function")
+        gt_count = np.sum(gt_data)
+        et_count = np.sum(density_map)
         mae += abs(gt_count-et_count)
         mse += ((gt_count-et_count)*(gt_count-et_count))
 
-        if quad_level_stats and model.startswith('QUAD'):
-            mae_reconstructions, mse_reconstructions, mae_upsamples, mse_upsamples = quad_reconstruct_level_pred(net, gt_data, model)
-            quad_level_upsamples_mse += mse_upsamples
-            quad_level_upsamples_mae += mae_upsamples
-            quad_level_reconstructions_mse += mse_reconstructions
-            quad_level_reconstructions_mae += mae_reconstructions
+        if save_test_results:
+            print("Plotting results")
+            mkdir_if_missing(plot_save_dir)
+            utils.save_results(im_data, gt_data, density_map, idx_data, plot_save_dir)
     mae = mae/data_loader.get_num_samples()
     mse = np.sqrt(mse/data_loader.get_num_samples())
-    
-    if quad_level_stats and model.startswith('QUAD'):
-        quad_level_reconstructions_mse = np.sqrt(quad_level_reconstructions_mse/data_loader.get_num_samples())
-        quad_level_reconstructions_mae = quad_level_reconstructions_mae/data_loader.get_num_samples()
-        quad_level_upsamples_mse = np.sqrt(quad_level_upsamples_mse/data_loader.get_num_samples())
-        quad_level_upsamples_mae = quad_level_upsamples_mae/data_loader.get_num_samples()
-        print ("=================== Validation for epoch {}: ==================".format(epoch))
-        for l in range(net.DME.levels):
-            print("Level {0}: Encoder mae {1:.4f}, mse {2:.4f}.\tFusion mae {3:.4f}, mse {4:.4f}".format(l, quad_level_upsamples_mae[l], quad_level_upsamples_mse[l], quad_level_reconstructions_mae[l], quad_level_reconstructions_mse[l]))
-        print("==============================================================")
-
     return mae,mse
-
-
-def quad_reconstruct_level_pred(net, gt_data, model):
-    gt_count = np.sum(gt_data)
-    mae_upsamples = []
-    mse_upsamples = []
-    mae_reconstructions = []
-    mse_reconstructions = []
-
-    for i in range(net.DME.levels):
-        patches_upsamples = net.DME.upsamples[i].copy()
-        if model == 'QUAD-STEPS':
-            patches_reconstructions = [reconstruction_steps[-1] for reconstruction_steps in net.DME.reconstructions[i].copy()]
-        else:
-            patches_reconstructions = net.DME.reconstructions[i].copy()
-        new_level_upsamples = []
-        new_level_reconstructions= []
-        while len(patches_upsamples) != 1:
-            for ind in range(0, len(patches_upsamples), 4):
-                den_1 = patches_upsamples[ind]
-                den_2 = patches_upsamples[ind+1]
-                den_3 = patches_upsamples[ind+2]
-                den_4 = patches_upsamples[ind+3]
-                ancestor = torch.cat((torch.cat((den_1, den_2), dim = 3), torch.cat((den_3, den_4), dim = 3)), dim = 2)
-                new_level_upsamples.append(ancestor)
-
-                den_1 = patches_reconstructions[ind]
-                den_2 = patches_reconstructions[ind+1]
-                den_3 = patches_reconstructions[ind+2]
-                den_4 = patches_reconstructions[ind+3]
-                ancestor = torch.cat((torch.cat((den_1, den_2), dim = 3), torch.cat((den_3, den_4), dim = 3)), dim = 2)
-                new_level_reconstructions.append(ancestor)
-
-            patches_upsamples = new_level_upsamples.copy()
-            patches_reconstructions = new_level_reconstructions.copy()
-            new_level_upsamples = []
-            new_level_reconstructions = []
-        
-        assert len(patches_upsamples) == 1 and len(patches_reconstructions) == 1, "Error: reconstruction or upsamples generated by level is invalid, expected 1 and got {} {}".format(len(patches_upsamples), len(patches_reconstructions))
-        patches_upsamples[0] = patches_upsamples[0].cpu().detach().numpy()
-        patches_reconstructions[0] = patches_reconstructions[0].cpu().detach().numpy()
-        assert patches_upsamples[0].shape == gt_data.shape, "Error: predicted upsamples does not match shape of gt. Expected {}, found {}".format(str(gt_data.shape), str(patches_upsamples[0].shape))
-        assert patches_reconstructions[0].shape == gt_data.shape, "Error: predicted reconstructions does not match shape of gt. Expected {}, found {}".format(str(gt_data.shape), str(patches_reconstructions[0].shape))
-        
-        et_count = np.sum(patches_upsamples[0])
-        mae_upsamples.append(abs(gt_count-et_count))
-        mse_upsamples.append((gt_count-et_count)*(gt_count-et_count))
-
-        et_count = np.sum(patches_reconstructions[0])
-        mae_reconstructions.append(abs(gt_count-et_count))
-        mse_reconstructions.append((gt_count-et_count)*(gt_count-et_count))
-    
-    mae_reconstructions = np.array(mae_reconstructions)
-    mse_reconstructions = np.array(mse_reconstructions)
-    mae_upsamples = np.array(mae_upsamples)
-    mse_upsamples = np.array(mse_upsamples)
-
-    return mae_reconstructions, mse_reconstructions, mae_upsamples, mse_upsamples

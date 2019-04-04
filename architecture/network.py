@@ -73,8 +73,7 @@ def weights_normal_init(model, dev=0.01):
             weights_normal_init(m, dev)
     else:
         for m in model.modules():
-            if isinstance(m, nn.Conv2d):                
-                #print torch.sum(m.weight)
+            if isinstance(m, nn.Conv2d):
                 m.weight.data.normal_(0.0, dev)
                 if m.bias is not None:
                     m.bias.data.fill_(0.0)
