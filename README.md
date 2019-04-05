@@ -16,7 +16,7 @@ You can also run the code using the docker image of [ufoym/deepo](https://hub.do
 
 ## 2. Preparing data
 
-We make available UCF-CC-50 and Shanghai Tech datasets [here](), download and unzip it into the root of the repo. Directories should have the following hierarchy:
+We make available UCF-CC-50 and Shanghai Tech datasets [here](http://www.liv.ic.unicamp.br/~quispe/publications/data/data-crowd-counting.zip), download and unzip it into the root of the repo. Directories should have the following hierarchy:
 
 ```
 ROOT_OF_REPO
