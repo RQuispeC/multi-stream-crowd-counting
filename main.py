@@ -40,8 +40,6 @@ parser.add_argument('--start-epoch', default=0, type=int,
                     help="manual epoch number (useful on restarts)")
 parser.add_argument('--lr', '--learning-rate', default=0.00001, type=float,
                     help="initial learning rate")
-parser.add_argument('--mm', '--momentum', default=0.9, type=float,
-                    help="training momentum")
 parser.add_argument('--train-batch', default=32, type=int,
                     help="train batch size (default 32)")
 # Miscs
@@ -71,7 +69,6 @@ def train(train_test_unit, out_dir_root):
     start_step = args.start_epoch
     end_step = args.max_epoch
     lr = args.lr
-    momentum = args.mm
 
     #log frequency
     disp_interval = args.train_batch*20
@@ -98,8 +95,6 @@ def train(train_test_unit, out_dir_root):
     net.cuda()
     net.train()
 
-    params = list(net.parameters())
-    params_p = list(filter(lambda p: p.requires_grad, net.parameters()))
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
 
     # training
@@ -121,7 +116,6 @@ def train(train_test_unit, out_dir_root):
             step = step + args.train_batch
             im_data = blob['data']
             gt_data = blob['gt_density']
-            idx_data = blob['idx']
             im_data_norm = im_data / 255.0
             density_map = net(im_data_norm, gt_data = gt_data)
             loss = net.loss
@@ -165,7 +159,6 @@ def test(train_test_unit, out_dir_root):
     sys.stdout = Logger(osp.join(output_dir, 'log_test.txt'))
     print("==========\nArgs:{}\n==========".format(args))
 
-    dataset_name = train_test_unit.metadata['name']
     val_path =train_test_unit.test_dir_img
     val_gt_path = train_test_unit.test_dir_den
 
