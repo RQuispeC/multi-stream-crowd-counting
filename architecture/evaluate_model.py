@@ -1,5 +1,7 @@
 from architecture.crowd_count import CrowdCounter
 import architecture.network as network
+from manage_data.utils import mkdir_if_missing as mkdir_if_missing
+from architecture.utils import save_results as save_results
 import numpy as np
 import torch
 
@@ -26,7 +28,7 @@ def evaluate_model(trained_model, data_loader, save_test_results = False, plot_s
         if save_test_results:
             print("Plotting results")
             mkdir_if_missing(plot_save_dir)
-            utils.save_results(im_data, gt_data, density_map, idx_data, plot_save_dir)
+            save_results(im_data, gt_data, density_map, idx_data, plot_save_dir)
     mae = mae/data_loader.get_num_samples()
     mse = np.sqrt(mse/data_loader.get_num_samples())
     return mae,mse
