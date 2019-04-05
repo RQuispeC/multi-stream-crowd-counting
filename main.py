@@ -179,7 +179,7 @@ def test(train_test_unit, out_dir_root):
             pretrained_model = osp.join(resume_dir, 'best_model.h5')
     print("Using {} for testing.".format(pretrained_model))
 
-    data_loader = ImageDataLoader(val_path, val_gt_path, shuffle=False, train_batch=1)
+    data_loader = ImageDataLoader(val_path, val_gt_path, shuffle=False, batch_size=1)
     mae,mse = evaluate_model(pretrained_model, data_loader, save_test_results=args.save_plots, plot_save_dir=osp.join(output_dir, 'plot-results-test/'))
 
     print("MAE: {0:.4f}, MSE: {1:.4f}".format(mae, mse))
