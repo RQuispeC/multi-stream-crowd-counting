@@ -1,4 +1,5 @@
 # Data and logs
+.vscode
 data/
 log/
 
