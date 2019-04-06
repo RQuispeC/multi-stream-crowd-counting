@@ -73,7 +73,7 @@ The training log is stored in `log_train.txt` inside the corresponding log/fold/
 After training you can re-load the trained weights (using flag `--resume`) and use them for testing:
 
 ```
-python3 main.py -d ucf-cc-50 --save-dir log/multi-stream --resume log/multi-stream --evaluate-only 
+python3 main.py -d ucf-cc-50 --save-dir log/multi-stream --resume log/multi-stream/ucf-cc-50_people_thr_0_gt_mode_same --evaluate-only 
 ```
 
 The testing log is stored in `log_test.txt` inside the corresponding log/fold/part directory. You can also generate the plots of the predictions using flag `--save-plots`, results are stored in the directory `plot-results-test` inside the corresponding log/fold/part directory.
